@@ -205,6 +205,7 @@ namespace CerticaStandardsAPI.Models
             standardSetFinal.data = general.data;
             string next = general.links.next;
 
+            //do not paginate for the values displayed in the subject drop down and the summary grid
             while (!string.IsNullOrEmpty(next) && facet != "disciplines.subjects" && facet !="standardsetsummary")
             {
                 general = AppendJsonData(general, facet, guidString, app, standardSetFinal);
