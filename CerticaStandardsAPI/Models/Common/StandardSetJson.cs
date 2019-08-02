@@ -195,6 +195,7 @@ namespace CerticaStandardsAPI.Models.Common
         public string document { get; set; }
         public string publicationGuid { get; set; }
         public string stateDocument { get; set; }
+        public string stateDocumentYear { get; set; }
 
     }
 }

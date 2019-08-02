@@ -159,7 +159,8 @@ namespace CerticaStandardsAPI.Models
                                                   subjectCode = x.attributes.document.disciplines.primary_subject.code,
                                                   stateDocument = x.attributes.document.descr,
                                                   document = x.attributes.document.publication.descr,
-                                                  publicationGuid = x.attributes.document.publication.guid
+                                                  publicationGuid = x.attributes.document.publication.guid,                                               
+                                                  stateDocumentYear = x.attributes.document.adopt_year
                                               })
                                               .GroupBy(o => new { o.subjectCode, o.subject})
                                               .Select(o => o.FirstOrDefault());
