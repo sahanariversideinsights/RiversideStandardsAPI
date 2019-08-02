@@ -17,6 +17,7 @@ namespace CerticaStandardsAPI.Models.Common
     {
         public string descr { get; set; }
         public string guid { get; set; }
+        public string code { get; set; }
         public string adoptYear { get; set; }
     }
 
@@ -57,6 +58,7 @@ namespace CerticaStandardsAPI.Models.Common
         public string guid { get; set; }
         public string descr { get; set; }
         public int seq { get; set; }
+        public string code { get; set; }
     }
     
 }

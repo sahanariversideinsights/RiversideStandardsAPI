@@ -45,11 +45,29 @@ namespace CerticaStandardsAPI.Models
             return result;
         }
 
+        public IEnumerable<SummaryData> GetSpecificStandardSummary(string guidString,string app)
+        {
+            if (app =="webcms")
+            {
+                IEnumerable<SummaryData> result = helper.StripParentJsonForSummaryData("standardsetsummary", guidString);
+                return result;
+            }
+            else
+                return null;
+         
+        }
+
+        public IEnumerable<FinalData> GetAllSubjects(string guidString)
+        {
+            result = helper.StripParentJsonForRiversideRelevantData("disciplines.subjects", guidString);
+            return result;
+        }
+
+
         public dynamic GetAppSpecificStandard(string guidString, string app)
         {
             if (app == "webcms")
-            {
-               
+            {               
                 StandardSetWebCMS result = helper.StripStandardSetJsonForWebCMSRelevantData("standardset", guidString, app);
                 return result;
             }

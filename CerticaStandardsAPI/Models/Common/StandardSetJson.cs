@@ -186,4 +186,15 @@ namespace CerticaStandardsAPI.Models.Common
     {
         public List<Datum> data { get; set; }
     }
+
+    public class SummaryData
+    {
+        public string subjectCode{ get; set; }
+        public string subject { get; set; }
+        public string documentGuid { get; set; }
+        public string document { get; set; }
+        public string publicationGuid { get; set; }
+        public string stateDocument { get; set; }
+
+    }
 }

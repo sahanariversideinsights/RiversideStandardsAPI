@@ -36,9 +36,17 @@ namespace RiversideStandardsAPI.Models
                 {
                     responseJson = JsonConvert.SerializeObject(certicaController.GetSpecificStandard(guidString));
                 }
+                else if (redirectedFrom == "standardssummary")
+                {
+                    responseJson = JsonConvert.SerializeObject(certicaController.GetSpecificStandardSummary(guidString,app));
+                }
                 else if (redirectedFrom == "appstandards")
                 {
                   responseJson = JsonConvert.SerializeObject(certicaController.GetAppSpecificStandard(guidString,app));
+                }
+                else if (redirectedFrom == "subjects")
+                {
+                    responseJson = JsonConvert.SerializeObject(certicaController.GetAllSubjects(guidString));
                 }
             }
             return responseJson;            

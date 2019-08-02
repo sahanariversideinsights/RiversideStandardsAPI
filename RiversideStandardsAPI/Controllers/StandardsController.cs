@@ -42,7 +42,7 @@ namespace RiversideStandardsAPI.Controllers
 
         }
 
-        //sample call looks like http://localhost:80/api/Authorities?Provider=Certica
+        //sample call looks like http://localhost:80/api/Authorities?Provider=Certica&Guid=91273AE8-F1B9-11E5-862E-0938DC287387
         [HttpGet]
         [Route("api/Authorities/{Provider=provider}")]  //state
         public IActionResult GetAllAuthorities()
@@ -62,10 +62,20 @@ namespace RiversideStandardsAPI.Controllers
             return Ok(JToken.Parse(responseJson)); ;
         }
 
+        //Sample Call looks like : http://localhost:80/api/Subject?Provider=Certica&Guid=9127FF50-F1B9-11E5-862E-0938DC287387
+        [HttpGet]
+        [Route("api/Subject/{Provider=provider}/{Guid=guid}")]
+        public IActionResult GetAllSubjects()   // subject
+        {
+            UriHandler(true);
+            string responseJson = helper.ApiCallRedirector("subjects", _urlKeyValues["provider"], _urlKeyValues["guidString"]);
+            return Ok(JToken.Parse(responseJson)); ;
+        }
+
         //Sample Call looks like : http://localhost:80/api/Document?Provider=Certica&Guid=4D7B5584-9C82-11E7-8A3F-4EABBF03DF2F
         [HttpGet]
         [Route("api/Document/{Provider=provider}/{Guid=guid}")]
-        public IActionResult GetAllDocuments()  //subject or state document. state document contains the year
+        public IActionResult GetAllDocuments()  //state document. state document contains the year
         {
             UriHandler(true);
             string responseJson = helper.ApiCallRedirector("documents", _urlKeyValues["provider"], _urlKeyValues["guidString"]);
@@ -89,6 +99,16 @@ namespace RiversideStandardsAPI.Controllers
         {
             UriHandler(true);
             string responseJson = helper.ApiCallRedirector("standards", _urlKeyValues["provider"], _urlKeyValues["guidString"]);
+            return Ok(JToken.Parse(responseJson)); ;
+        }
+
+        //Sample Call looks like : http://localhost:80/api/Standard?Provider=Certica&Guid=428CB170-24A5-11E9-9A51-E829F44D669C
+        [HttpGet]
+        [Route("api/StandardUserSummary/{Provider=provider}/{App=app}/{Guid=guid}")]
+        public IActionResult GetStandardUserSummary()
+        {
+            UriHandler(true,true);
+            string responseJson = helper.ApiCallRedirector("standardssummary", _urlKeyValues["provider"], _urlKeyValues["guidString"], _urlKeyValues["application"]);
             return Ok(JToken.Parse(responseJson)); ;
         }
 

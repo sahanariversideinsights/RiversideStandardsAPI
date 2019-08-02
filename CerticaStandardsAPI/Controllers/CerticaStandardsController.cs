@@ -46,9 +46,21 @@ namespace CerticaStandardsAPI.Controllers
         }
 
         [HttpGet]
+        public IEnumerable<SummaryData> GetSpecificStandardSummary(string guidString,string app)
+        {
+            return certicaStandards.GetSpecificStandardSummary(guidString,app);
+        }
+                
+        [HttpGet]
         public dynamic GetAppSpecificStandard(string guidString, string app)
         {
             return certicaStandards.GetAppSpecificStandard(guidString, app);
+        }
+
+        [HttpGet]
+        public IEnumerable<FinalData> GetAllSubjects(string guidString)
+        {
+            return certicaStandards.GetAllSubjects(guidString);
         }
     }
 }

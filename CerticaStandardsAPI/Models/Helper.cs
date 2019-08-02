@@ -80,7 +80,18 @@ namespace CerticaStandardsAPI.Models
                 {
                     queryString = providerSettings.getConfigValue("SECTION_QUERY");
                 }
-
+                else if (facet == "standardsetsummary")
+                {
+                    queryString = providerSettings.getConfigValue("SUMMARY_QUERY");
+                }
+                else if (facet == "disciplines.subjects")
+                {
+                    queryString = providerSettings.getConfigValue("SUBJECT_QUERY");
+                }
+                else if (facet == "grid")
+                {
+                    queryString = providerSettings.getConfigValue("GRID_QUERY");
+                }
                 else if (facet == "standardset")
                 {
 
@@ -127,8 +138,32 @@ namespace CerticaStandardsAPI.Models
                  {
                      descr = y.data.descr,
                      guid = y.data.guid,
-                     adoptYear = y.data.adopt_year
+                     adoptYear = y.data.adopt_year,
+                     code = y.data.code
                  }));
+            return result;
+        }
+ 
+
+        protected internal IEnumerable<SummaryData> StripParentJsonForSummaryData(string facet, string guidString)
+        {
+            StandardSetFinal standardSetFinal = new StandardSetFinal();
+            standardSetFinal=StripStandardSetJsonForRiversideRelevantData(facet, guidString, null);
+            SummaryData summaryData = new SummaryData();
+
+            IEnumerable<SummaryData> result = standardSetFinal.data.Select
+                                              (x => new SummaryData
+                                              {
+                                                  documentGuid = x.attributes.document.guid,
+                                                  subject = x.attributes.document.disciplines.primary_subject.descr,
+                                                  subjectCode = x.attributes.document.disciplines.primary_subject.code,
+                                                  stateDocument = x.attributes.document.descr,
+                                                  document = x.attributes.document.publication.descr,
+                                                  publicationGuid = x.attributes.document.publication.guid
+                                              })
+                                              .GroupBy(o => new { o.subjectCode, o.subject})
+                                              .Select(o => o.FirstOrDefault());
+
             return result;
         }
 
@@ -169,7 +204,7 @@ namespace CerticaStandardsAPI.Models
             standardSetFinal.data = general.data;
             string next = general.links.next;
 
-            while (!string.IsNullOrEmpty(next))
+            while (!string.IsNullOrEmpty(next) && facet != "disciplines.subjects")
             {
                 general = AppendJsonData(general, facet, guidString, app, standardSetFinal);
                 standardSetFinal.data.AddRange(general.data);
@@ -194,10 +229,10 @@ namespace CerticaStandardsAPI.Models
         protected internal StandardSetWebCMS StripStandardSetJsonForWebCMSRelevantData(string facet, string guidString, string app = null)
         {
             StandardSetFinal standardSetFinal = StripStandardSetJsonForRiversideRelevantData(facet, guidString, app);
-            StandardSetWebCMS standardSetWebCMS = ReturnWebCMSData(standardSetFinal.data, guidString);
+            StandardSetWebCMS standardSetWebCMS = ReturnWebCMSData(standardSetFinal.data, guidString); 
             return standardSetWebCMS;
         }
-     
+
         protected internal string GetState(Datum item)
         {
             string state = Convert.ToString(item.attributes.document.publication.regions.Where(x => x.type == "Other" || x.type == "state")
@@ -326,37 +361,40 @@ namespace CerticaStandardsAPI.Models
 
        protected internal KeyValuePair<int?,int?> GetContent(string content)
         {
-            
-            if (content.Equals("English Language Arts"))
+            int? contentId = null, contentFieldId = null;
+            if (!string.IsNullOrEmpty(content))
             {
-                content = "LANGUAGE ARTS";
+                if (content.Equals("English Language Arts"))
+                {
+                    content = "LANGUAGE ARTS";
+                }
+                
+                switch (content.ToUpper())
+                {
+                    case "LANGUAGE ARTS":
+                        contentFieldId = 18;
+                        contentId = 1;
+                        break;
+                    case "MATH":
+                        contentFieldId = 19;
+                        contentId = 2;
+                        break;
+                    case "SOCIAL STUDIES":
+                        contentFieldId = 20;
+                        contentId = 4;
+                        break;
+                    case "SCIENCE":
+                        contentFieldId = 21;
+                        contentId = 3;
+                        break;
+                    case "READING":
+                        contentFieldId = 22;
+                        contentId = 5;
+                        break;
+                    default:
+                        break;
+                }
             }
-            int? contentId=null, contentFieldId=null;
-            switch (content.ToUpper())
-            {
-                case "LANGUAGE ARTS":
-                    contentFieldId = 18;
-                    contentId = 1;
-                    break;
-                case "MATH":
-                    contentFieldId = 19;
-                    contentId = 2;
-                    break;
-                case "SOCIAL STUDIES":
-                    contentFieldId = 20;
-                    contentId = 4;
-                    break;
-                case "SCIENCE":
-                    contentFieldId = 21;
-                    contentId = 3;
-                    break;
-                case "READING":
-                    contentFieldId = 22;
-                    contentId = 5;
-                    break;
-                default:                    
-                    break;                    
-            }          
             return new KeyValuePair<int?, int?>(contentId, contentFieldId);
         }
     }
