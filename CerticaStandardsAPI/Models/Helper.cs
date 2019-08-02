@@ -204,7 +204,7 @@ namespace CerticaStandardsAPI.Models
             standardSetFinal.data = general.data;
             string next = general.links.next;
 
-            while (!string.IsNullOrEmpty(next) && facet != "disciplines.subjects")
+            while (!string.IsNullOrEmpty(next) && facet != "disciplines.subjects" && facet !="standardsetsummary")
             {
                 general = AppendJsonData(general, facet, guidString, app, standardSetFinal);
                 standardSetFinal.data.AddRange(general.data);
