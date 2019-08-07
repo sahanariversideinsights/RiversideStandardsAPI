@@ -102,7 +102,7 @@ namespace RiversideStandardsAPI.Controllers
             return Ok(JToken.Parse(responseJson)); ;
         }
 
-        //Sample Call looks like : http://localhost:80/api/Standard?Provider=Certica&Guid=428CB170-24A5-11E9-9A51-E829F44D669C
+        //Sample Call looks like :https://localhost:80/api/StandardUserSummary?Provider=Certica&App=webcms&Guid=428CB170-24A5-11E9-9A51-E829F44D669C
         [HttpGet]
         [Route("api/StandardUserSummary/{Provider=provider}/{App=app}/{Guid=guid}")]
         public IActionResult GetStandardUserSummary()

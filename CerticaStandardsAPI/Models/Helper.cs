@@ -4,13 +4,11 @@ using System.IO;
 using CerticaStandardsAPI.Models.Common;
 using System.Collections.Generic;
 using System.Linq;
-
-//move to webcms
-using System.Reflection;
 using StandardsApiData.Common;
+using Newtonsoft.Json;
 using System.Data.SqlClient;
 using System.Data;
-using Newtonsoft.Json;
+using System.Reflection;
 
 namespace CerticaStandardsAPI.Models
 {
@@ -143,7 +141,36 @@ namespace CerticaStandardsAPI.Models
                  }));
             return result;
         }
- 
+
+        protected internal DataTable ConvertToDataTable(List<LevelDict> standardSetData)
+        {
+            DataTable standardTable = new DataTable();
+            try
+            {
+                standardTable.TableName = "StandardSetTable";
+
+                foreach (PropertyInfo property in standardSetData[3].GetType().GetProperties())
+                {
+
+                    standardTable.Columns.Add(new DataColumn(property.Name, Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType));
+                }
+                foreach (var standard in standardSetData)
+                {
+                    DataRow newRow = standardTable.NewRow();
+                    foreach (PropertyInfo property in standard.GetType().GetProperties())
+                    {
+                        newRow[property.Name] = standard.GetType().GetProperty(property.Name).GetValue(standard, null);
+                    }
+                    standardTable.Rows.Add(newRow);
+                }
+
+                return standardTable;
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
 
         protected internal IEnumerable<SummaryData> StripParentJsonForSummaryData(string facet, string guidString)
         {
@@ -231,20 +258,71 @@ namespace CerticaStandardsAPI.Models
         protected internal StandardSetWebCMS StripStandardSetJsonForWebCMSRelevantData(string facet, string guidString, string app = null)
         {
             StandardSetFinal standardSetFinal = StripStandardSetJsonForRiversideRelevantData(facet, guidString, app);
-            StandardSetWebCMS standardSetWebCMS = ReturnWebCMSData(standardSetFinal.data, guidString); 
+            StandardSetWebCMS standardSetWebCMS = ReturnWebCMSData(standardSetFinal.data, guidString);
+
+            InsertCollectionIntoWebCMS(standardSetWebCMS);
             return standardSetWebCMS;
         }
 
-        protected internal string GetState(Datum item)
-        {
-            string state = Convert.ToString(item.attributes.document.publication.regions.Where(x => x.type == "Other" || x.type == "state")
-                               .Select(x => x.code).First());
 
+        protected internal void InsertCollectionIntoWebCMS(StandardSetWebCMS standardSetWebCMS)
+        {
+            try
+            {
+                DataTable standardTable = ConvertToDataTable(standardSetWebCMS.webCMSLevels);
+                
+                AppConfiguration appConfiguration = new AppConfiguration();
+                using (SqlConnection sqlcon = new SqlConnection(appConfiguration.ConnectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("InsertStandardSetIntoWebCMS", sqlcon))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        SqlParameter standardSetName = new SqlParameter();
+                        standardSetName.Direction = ParameterDirection.Input;
+                        standardSetName.ParameterName = "@StandardSetName";
+                        standardSetName.SqlDbType = SqlDbType.VarChar;
+                        standardSetName.Value = standardSetWebCMS.standardSetName;
+                        cmd.Parameters.Add(standardSetName);
+
+                        SqlParameter state = new SqlParameter();
+                        state.Direction = ParameterDirection.Input;
+                        state.ParameterName = "@State";
+                        state.SqlDbType = SqlDbType.VarChar;
+                        state.Value = standardSetWebCMS.state;
+                        cmd.Parameters.Add(state);
+
+                        SqlParameter tableParameter = new SqlParameter();
+                        tableParameter.Direction = ParameterDirection.Input;
+                        tableParameter.ParameterName = "@StandardSetTable";
+                        tableParameter.SqlDbType = SqlDbType.Structured;
+                        tableParameter.Value = standardTable;
+                        cmd.Parameters.Add(tableParameter);
+                        cmd.CommandTimeout = 0;
+
+                        sqlcon.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            { 
+            }
+        } 
+        protected internal string GetState(Datum item)
+        {             
+            string state = Convert.ToString(item.attributes.document.publication.regions.Where(x => x.type.ToLower() == "other" || x.type.ToLower() == "state")
+                               .Select(x => x.code).FirstOrDefault());
+            
             return state;
         }
-        protected internal string FormStandardSetName(string state, string level1, string level2)
+        protected internal string FormStandardSetName(string state, string level1, string level2,string level3)
         {
-            string standardSetName = state + " - " + level1 + " " + level2;
+            string standardSetName = state + " - " + level1 + " " + level2 + " "+ level3;
+            if(standardSetName.Contains("CC - NGA Center/CCSSO Common Core State Standards"))
+            {
+                standardSetName = standardSetName.Replace("CC - NGA Center/CCSSO Common Core State Standards", "National Common Core State Standards");
+            }
             return standardSetName;
         }
 
@@ -284,6 +362,51 @@ namespace CerticaStandardsAPI.Models
             return level1;
         }
 
+        protected internal List<LevelDict> GetLevel4(Datum item, List<LevelDict> level4, LevelDict levelDict, string content)
+        {
+            string fromGrade = item.attributes.education_levels.grades.OrderBy(x => x.seq).Select(f => f.code).First();
+            string toGrade = item.attributes.education_levels.grades.OrderByDescending(x => x.seq).Select(t => t.code).First();
+            string standardText;
+
+            standardText = fromGrade;
+            
+            if((fromGrade.ToLower().Trim()=="9") || (fromGrade.ToLower().Trim() == "10") || (fromGrade.ToLower().Trim() == "11") || (fromGrade.ToLower().Trim() == "12"))
+            {
+                if (fromGrade.ToLower().Trim() != toGrade.ToLower().Trim())               
+                {
+                    standardText = fromGrade + "-" + toGrade;
+                }
+            }
+            else
+            {
+                standardText = fromGrade;
+            }
+
+            levelDict = AssignLevelInformation(4, item,Guid.Empty,standardText, content);
+
+            if (!CheckIfGradeExists(level4,standardText))
+            {
+                if ((!levelDict.subject.ToLower().Contains("introduction")) && (!levelDict.subject.ToLower().Contains("practices")))
+                    level4.Add(levelDict);
+            }
+            return level4;
+        }
+        public int GetNthIndex(string s, char t, int n)
+        {
+            int count = 0;
+            for (int i = 0; i < s.Length; i++)
+            {
+                if (s[i] == t)
+                {
+                    count++;
+                    if (count == n)
+                    {
+                        return i;
+                    }
+                }
+            }
+            return -1;
+        }
         protected internal bool CheckIfValueExists(List<LevelDict> levelList,Guid guidToFind)
         {
             bool hasGuid=  (from level in levelList
@@ -292,6 +415,13 @@ namespace CerticaStandardsAPI.Models
             return hasGuid;
         }
 
+        protected internal bool CheckIfGradeExists(List<LevelDict> levelList, string GradeToFind)
+        {
+            bool hasGrade = (from level in levelList
+                            where level.standardText == GradeToFind
+                            select level.standardText).Any();
+            return hasGrade;
+        }
         protected internal List<LevelDict> GetLevel2(Datum item, List<LevelDict> level2, LevelDict levelDict,string content)
         {
             levelDict = AssignLevelInformation(2, item, Guid.Parse(item.attributes.document.publication.guid), item.attributes.document.publication.descr, content);
@@ -303,8 +433,8 @@ namespace CerticaStandardsAPI.Models
         }
 
         protected internal List<LevelDict> GetLevel3(Datum item, List<LevelDict> level3, LevelDict levelDict,string content)
-        {
-            levelDict = AssignLevelInformation(3, item, Guid.Parse(item.attributes.section.disciplines.primary_subject.guid), item.attributes.section.disciplines.primary_subject.code + " " + item.attributes.section.descr + "(" + item.attributes.section.adopt_year + ")", content);
+        {            
+            levelDict = AssignLevelInformation(3, item, Guid.Parse(item.attributes.section.disciplines.primary_subject.guid), item.attributes.section.disciplines.primary_subject.code + " (" + item.attributes.section.adopt_year + ")", content);
             if (!CheckIfValueExists(level3, levelDict.standardGuid))
             {
                 level3.Add(levelDict);
@@ -321,18 +451,45 @@ namespace CerticaStandardsAPI.Models
             levelList = GetLevel2(item, levelList, levelDict, content);
             //Get level3
             levelList = GetLevel3(item, levelList, levelDict, content);
+            //Get level4
+            levelList = GetLevel4(item, levelList, levelDict, content);
 
             if (item.attributes.level >=1 && item.attributes.level<=4)
             {
-                //add levels 4-9 and their relevant key value pairs
-                string standardText = item.attributes.number.enhanced + " " + item.attributes.statement.descr;
-                levelDict = AssignLevelInformation(item.attributes.level + 3, item, Guid.Parse(item.attributes.guid??""),standardText, content);
-                levelList.Add(levelDict);              
+                //add levels 5-10 and their relevant key value pairs
+                string enhanced = GetEnhanced(item.attributes.number.enhanced);
+                string standardText;                              
+                standardText = enhanced + " " + item.attributes.statement.descr;
+                
+                levelDict = AssignLevelInformation(item.attributes.level + 4, item, Guid.Parse(item.attributes.guid??""),standardText, content);
+
+                //Ignore introduction and practices
+                if((!levelDict.subject.ToLower().Contains("introduction")) && (!levelDict.subject.ToLower().Contains("practices")))
+                    levelList.Add(levelDict);              
             }
            
             return levelList;
         }
                 
+       protected internal string GetEnhanced(string enhanced)
+        {
+            if (!string.IsNullOrEmpty(enhanced))
+            {
+                int index = GetNthIndex(enhanced, '.', 3) + 1;
+                if (index > 0)
+                {
+                    enhanced = enhanced.Substring(index, enhanced.Length - index);
+                }
+
+                //for highschool
+                if (enhanced.StartsWith("HSA-"))
+                {
+                    enhanced.Replace("HSA-", "A-");
+                }
+            }
+            
+            return enhanced;
+        }
         protected internal StandardSetWebCMS ReturnWebCMSData(List<Datum> result, string guidString)
         {
             StandardSetWebCMS standardSetWebCMS = new StandardSetWebCMS();            
@@ -350,12 +507,17 @@ namespace CerticaStandardsAPI.Models
                 if (string.IsNullOrEmpty(standardSetName))
                 {
                     string level1=levelList.Where(x => x.levelNumber == 1).Select(y => y.standardText).First();
-                    string level2 = levelList.Where(x => x.levelNumber == 2).Select(y => y.standardText).First();                   
-                    standardSetName = FormStandardSetName(state, level1,level2);                   
+                    string level2 = levelList.Where(x => x.levelNumber == 2).Select(y => y.standardText).First();
+                    string level3 = levelList.Where(x => x.levelNumber == 3).Select(y => y.standardText).First();
+                    standardSetName = FormStandardSetName(state, level1,level2,level3);                   
                 }               
             }
          
             standardSetWebCMS.standardSetName = standardSetName;
+
+            if (state == "CC")
+                state = "NT";
+            
             standardSetWebCMS.state = state;        
             standardSetWebCMS.webCMSLevels.AddRange(levelList);           
             return standardSetWebCMS;
@@ -393,7 +555,17 @@ namespace CerticaStandardsAPI.Models
                         contentFieldId = 22;
                         contentId = 5;
                         break;
+                    case "N/A":
+                        contentFieldId = 23;
+                        contentId = 6;
+                        break;
+                    case "ARTS":
+                        contentFieldId = 24;
+                        contentId = 12;
+                        break;
                     default:
+                        contentFieldId = 23;
+                        contentId = 6;
                         break;
                 }
             }
