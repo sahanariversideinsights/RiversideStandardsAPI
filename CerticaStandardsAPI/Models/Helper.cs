@@ -457,7 +457,7 @@ namespace CerticaStandardsAPI.Models
             if (item.attributes.level >=1 && item.attributes.level<=4)
             {
                 //add levels 5-10 and their relevant key value pairs
-                string enhanced = GetEnhanced(item.attributes.number.enhanced);
+                string enhanced = GetEnhanced(item.attributes.number.enhanced,item);
                 string standardText;                              
                 standardText = enhanced + " " + item.attributes.statement.descr;
                 
@@ -471,7 +471,7 @@ namespace CerticaStandardsAPI.Models
             return levelList;
         }
                 
-       protected internal string GetEnhanced(string enhanced)
+       protected internal string GetEnhanced(string enhanced,Datum item)
         {
             if (!string.IsNullOrEmpty(enhanced))
             {
@@ -481,10 +481,16 @@ namespace CerticaStandardsAPI.Models
                     enhanced = enhanced.Substring(index, enhanced.Length - index);
                 }
 
+                string fromGrade = item.attributes.education_levels.grades.OrderBy(x => x.seq).Select(f => f.code).FirstOrDefault();
+                string toGrade = item.attributes.education_levels.grades.OrderByDescending(x => x.seq).Select(t => t.code).FirstOrDefault();
+
                 //for highschool
-                if (enhanced.StartsWith("HSA-"))
+                if ((fromGrade.ToLower().Trim() == "9") || (fromGrade.ToLower().Trim() == "10") || (fromGrade.ToLower().Trim() == "11") || (fromGrade.ToLower().Trim() == "12"))
                 {
-                    enhanced.Replace("HSA-", "A-");
+                    if (enhanced.StartsWith("HS"))
+                    {
+                       enhanced= enhanced.Replace("HS", "");
+                    }
                 }
             }
             
